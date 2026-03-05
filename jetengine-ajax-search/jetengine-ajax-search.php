@@ -336,32 +336,62 @@ function je_ajax_search_experiences() {
         ];
     }
 
-    // ── Date range meta filter ──
-    // Assumes the experience has meta fields: experience_start_date / experience_end_date (Y-m-d)
-    // Adjust meta keys to match your JetEngine setup.
-    $meta_query = [];
+    // ── Date range filter via "prices" repeater ──
+    // The repeater stores rows with subfields: datestart_, dateend_, price_.
+    // We pre-filter to find experience IDs where at least one repeater row
+    // has a future end date AND overlaps the user's selected date range.
+    if ( $date_from !== '' || $date_to !== '' ) {
+        $today_ymd = wp_date( 'Y-m-d' );
 
-    if ( $date_from !== '' ) {
-        $meta_query[] = [
-            'key'     => 'experience_start_date', // ← adjust if needed
-            'value'   => $date_from,
-            'compare' => '>=',
-            'type'    => 'DATE',
-        ];
-    }
+        // Lightweight query: get ALL published experience IDs only
+        $all_ids_query = new WP_Query( [
+            'post_type'      => 'experience',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ] );
+        $all_ids = $all_ids_query->posts;
 
-    if ( $date_to !== '' ) {
-        $meta_query[] = [
-            'key'     => 'experience_end_date',   // ← adjust if needed
-            'value'   => $date_to,
-            'compare' => '<=',
-            'type'    => 'DATE',
-        ];
-    }
+        $matching_ids = [];
+        foreach ( $all_ids as $pid ) {
+            $repeater = get_post_meta( $pid, 'prices', true );
+            if ( ! is_array( $repeater ) || empty( $repeater ) ) {
+                continue;
+            }
 
-    if ( ! empty( $meta_query ) ) {
-        $meta_query['relation'] = 'AND';
-        $args['meta_query']     = $meta_query;
+            foreach ( $repeater as $row ) {
+                $raw_start = isset( $row['datestart_'] ) ? $row['datestart_'] : '';
+                $raw_end   = isset( $row['dateend_'] )   ? $row['dateend_']   : '';
+
+                // Normalize to Y-m-d (JetEngine may store as timestamp or string)
+                $row_start = is_numeric( $raw_start ) ? wp_date( 'Y-m-d', (int) $raw_start ) : $raw_start;
+                $row_end   = is_numeric( $raw_end )   ? wp_date( 'Y-m-d', (int) $raw_end )   : $raw_end;
+
+                // Must be a future row (end date >= today)
+                if ( $row_end === '' || $row_end < $today_ymd ) {
+                    continue;
+                }
+
+                // Check overlap with user's filter range
+                // Overlap logic: row_start <= filter_to AND row_end >= filter_from
+                $overlap = true;
+                if ( $date_from !== '' && $row_end < $date_from ) {
+                    $overlap = false;
+                }
+                if ( $date_to !== '' && $row_start !== '' && $row_start > $date_to ) {
+                    $overlap = false;
+                }
+
+                if ( $overlap ) {
+                    $matching_ids[] = $pid;
+                    break; // one matching row is enough for this post
+                }
+            }
+        }
+
+        // Constrain main query to matched IDs (use [0] for no matches → returns nothing)
+        $args['post__in'] = ! empty( $matching_ids ) ? $matching_ids : [ 0 ];
     }
 
     // ── Run query ──
@@ -405,17 +435,57 @@ function je_ajax_search_experiences() {
             $duration = get_post_meta( $post_id, 'experience_duration', true );
             $rating   = get_post_meta( $post_id, 'experience_rating', true );
 
+            // ── "Starting at" price (standalone field) ──
+            $starting_price_raw = get_post_meta( $post_id, 'price_-_starting_at', true );
+            $starting_price     = $starting_price_raw ? esc_html( $starting_price_raw ) : '';
+
+            // ── "prices" repeater – future dates only ──
+            $upcoming_dates  = [];
+            $prices_repeater = get_post_meta( $post_id, 'prices', true );
+            $today           = wp_date( 'Y-m-d' ); // server today in WP timezone
+
+            if ( is_array( $prices_repeater ) && ! empty( $prices_repeater ) ) {
+                foreach ( $prices_repeater as $row ) {
+                    $row_price = isset( $row['price_'] )     ? $row['price_']     : '';
+                    $raw_start = isset( $row['datestart_'] ) ? $row['datestart_'] : '';
+                    $raw_end   = isset( $row['dateend_'] )   ? $row['dateend_']   : '';
+
+                    // JetEngine may store dates as Unix timestamps or Y-m-d strings
+                    $start_ymd = is_numeric( $raw_start ) ? wp_date( 'Y-m-d', (int) $raw_start ) : $raw_start;
+                    $end_ymd   = is_numeric( $raw_end )   ? wp_date( 'Y-m-d', (int) $raw_end )   : $raw_end;
+
+                    // Skip rows where the end date is in the past
+                    if ( $end_ymd === '' || $end_ymd < $today ) {
+                        continue;
+                    }
+
+                    // Format dates for human-readable display
+                    $start_ts    = strtotime( $start_ymd );
+                    $end_ts      = strtotime( $end_ymd );
+                    $display_from = $start_ts ? wp_date( 'M j, Y', $start_ts ) : '';
+                    $display_to   = $end_ts   ? wp_date( 'M j, Y', $end_ts )   : '';
+
+                    $upcoming_dates[] = [
+                        'price'     => esc_html( $row_price ),
+                        'date_from' => esc_html( $display_from ),
+                        'date_to'   => esc_html( $display_to ),
+                    ];
+                }
+            }
+
             $posts_data[] = [
-                'id'           => $post_id,
-                'title'        => get_the_title(),
-                'permalink'    => get_permalink(),
-                'excerpt'      => $excerpt,
-                'thumb'        => $thumb_url,
-                'date'         => get_the_date( 'M j, Y' ),
-                'countries'    => $country_labels,
-                'price'        => $price    ? esc_html( $price )    : '',
-                'duration'     => $duration ? esc_html( $duration ) : '',
-                'rating'       => $rating   ? floatval( $rating )   : 0,
+                'id'             => $post_id,
+                'title'          => get_the_title(),
+                'permalink'      => get_permalink(),
+                'excerpt'        => $excerpt,
+                'thumb'          => $thumb_url,
+                'date'           => get_the_date( 'M j, Y' ),
+                'countries'      => $country_labels,
+                'price'          => $price    ? esc_html( $price )    : '',
+                'duration'       => $duration ? esc_html( $duration ) : '',
+                'rating'         => $rating   ? floatval( $rating )   : 0,
+                'starting_price' => $starting_price,
+                'upcoming_dates' => $upcoming_dates,
             ];
         }
         wp_reset_postdata();
@@ -428,6 +498,7 @@ function je_ajax_search_experiences() {
         'page'        => $page,
     ] );
 }
+
 
 /* =========================================================
    6. JETENGINE WIDGET (Elementor)
