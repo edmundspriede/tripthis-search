@@ -1,0 +1,808 @@
+/* =============================================================
+   JetEngine AJAX Experience Search — Stylesheet
+   Design: clean travel/hospitality UI, warm navy + coral accents
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* ── Custom Properties ───────────────────────────────────── */
+.je-search-wrap {
+    --je-accent      : #1a56db;
+    --je-accent-h    : #1347bf;
+    --je-coral       : #f97316;
+    --je-navy        : #0f1b3d;
+    --je-navy-soft   : #1e2d5a;
+    --je-sand        : #faf7f2;
+    --je-border      : #e2e8f0;
+    --je-muted       : #64748b;
+    --je-text        : #1e293b;
+    --je-white       : #ffffff;
+    --je-shadow-sm   : 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --je-shadow-md   : 0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
+    --je-shadow-lg   : 0 12px 40px rgba(0,0,0,.14), 0 4px 12px rgba(0,0,0,.08);
+    --je-radius      : 14px;
+    --je-radius-sm   : 8px;
+    --je-radius-pill : 999px;
+    --je-font-body   : 'DM Sans', sans-serif;
+    --je-font-display: 'Fraunces', Georgia, serif;
+    --je-transition  : 200ms cubic-bezier(.4,0,.2,1);
+
+    font-family : var(--je-font-body);
+    color       : var(--je-text);
+    max-width   : 900px;
+    margin      : 0 auto;
+}
+
+/* ── Quick-select pills ───────────────────────────────────── */
+.je-search__quick-bar  {
+    display     : flex;
+    flex-wrap   : wrap;
+    align-items : center;
+    gap         : 8px;
+    margin-bottom: 14px;
+    align-content: center;
+    justify-content: center;
+}
+
+.je-search__quick-label {
+    font-size   : .75rem;
+    font-weight : 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color       : var(--je-muted);
+    margin-right: 4px;
+    white-space : nowrap;
+}
+
+.je-search__quick-pill , .je-period-pill {
+    display     : flex !important;
+    align-items : center;
+    gap         : 0px;
+    padding     : 6px 14px 6px 10px !important;
+    border      : 1.5px solid var(--je-border) !important;
+    border-radius: var(--je-radius-pill) !important;
+    background  : var(--je-white) !important;
+    font-family : var(--je-font-body) !important;
+    font-size   : .8rem;
+    font-weight : 500;
+    color       : var(--je-text) !important;
+    cursor      : pointer;
+    transition  : all var(--je-transition);
+    user-select : none;
+    box-shadow  : var(--je-shadow-sm);
+}
+
+.je-search__quick-pill:hover {
+    border-color: var(--je-accent) !important;
+    color       : var(--je-accent) !important; 
+    box-shadow  : 0 2px 8px rgba(26,86,219,.15);
+    transform   : translateY(-1px);
+}
+
+.je-search__quick-pill.is-active {
+    background  : var(--je-accent) !important;
+    border-color: var(--je-accent) !important; 
+    color       : var(--je-white) !important;
+    box-shadow  : 0 4px 14px rgba(26,86,219,.35);
+    transform   : translateY(-1px);
+}
+
+/* ── Search row ──────────────────────────────────────────── */
+.je-search-btn {
+    display: none !important;
+   
+}
+
+.je-country-option {
+    padding: 10px !important;
+    margin: 3px; 
+}
+
+.je-search__row {
+    display     : flex;
+    align-items : stretch;
+    gap         : 0;
+    background  : var(--je-white);
+    border      : 1.5px solid var(--je-border);
+    border-radius: var(--je-radius);
+    box-shadow  : var(--je-shadow-md);
+    overflow    : visible;
+    position    : relative;
+    flex-direction: column;
+}
+
+/* ── Fields ──────────────────────────────────────────────── */
+.je-search__field {
+    flex        : 1;
+    min-width   : 0;
+    padding     : 14px 18px 12px;
+    position    : relative;
+    border-right: 1.5px solid var(--je-border);
+}
+
+.je-search__field--date {
+    border-right: none;
+}
+
+.je-search__field-label {
+    display     : flex;
+    align-items : center;
+    gap         : 5px;
+    font-size   : .7rem;
+    font-weight : 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color       : var(--je-muted);
+    margin-bottom: 4px;
+    pointer-events: none;
+}
+
+.je-search__field-label svg {
+    flex-shrink: 0;
+    opacity    : .7;
+}
+
+.je-search__input {
+    display    : block;
+    width      : 100%;
+    border     : none;
+    outline    : none;
+    background : transparent;
+    font-family: var(--je-font-body);
+    font-size  : .95rem;
+    font-weight: 500;
+    color      : var(--je-text);
+    padding    : 0;
+    line-height: 1.4;
+}
+
+.je-search__input::placeholder {
+    color  : #94a3b8;
+    font-weight: 400;
+}
+
+/* Country input wrap */
+.je-country-input-wrap {
+    display    : flex;
+    align-items: center;
+    gap        : 6px;
+    min-height : 28px;
+}
+
+/* Token inside field */
+.je-country-tokens {
+    display    : flex;
+    flex-wrap  : wrap;
+    gap        : 4px;
+    flex-shrink: 0;
+}
+
+.je-country-token {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 5px;
+    padding    : 3px 10px 3px 6px;
+    background : #eff6ff;
+    border     : 1px solid #bfdbfe;
+    border-radius: var(--je-radius-pill);
+    font-size  : .82rem;
+    font-weight: 600;
+    color      : var(--je-accent);
+    white-space: nowrap;
+}
+
+.je-country-token__name { line-height: 1; }
+
+/* Clear buttons */
+.je-country-clear,
+.je-date-clear, .je-token-remove {
+    flex-shrink: 0;
+    display    : flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width      : 22px !important;
+    height     : 22px !important;
+    padding : 0 !important;
+    border-radius: 50%;
+    border     : none;
+    background : #e2e8f0;
+    color      : #64748b;
+    cursor     : pointer;
+    transition : all var(--je-transition);
+    padding    : 0;
+}
+
+.je-country-clear:hover,
+.je-date-clear:hover {
+    background : #f97316;
+    color      : #fff;
+}
+
+/* Date field */
+.je-date-input-wrap {
+    display    : flex;
+    align-items: center;
+    gap        : 6px;
+}
+
+.je-search__input--date {
+    cursor     : pointer;
+}
+
+/* ── Search button ───────────────────────────────────────── */
+.je-search__btn {
+    flex-shrink: 0;
+    display    : none !important;
+    align-items: center;
+    gap        : 8px;
+    padding    : 0 26px;
+    background : var(--je-accent);
+    color      : var(--je-white);
+    border     : none;
+    border-radius: 0 calc(var(--je-radius) - 2px) calc(var(--je-radius) - 2px) 0;
+    font-family: var(--je-font-body);
+    font-size  : .9rem;
+    font-weight: 600;
+    cursor     : pointer;
+    transition : all var(--je-transition);
+    white-space: nowrap;
+    letter-spacing: .02em;
+}
+
+.je-search__btn:hover {
+    background : var(--je-accent-h);
+    box-shadow : 0 4px 14px rgba(26,86,219,.4);
+}
+
+.je-search__btn:disabled {
+    opacity  : .6;
+    cursor   : not-allowed;
+}
+
+/* ── Country dropdown ────────────────────────────────────── */
+.je-country-dropdown {
+    position   : absolute;
+    top        : calc(100% + 6px);
+    left       : -1.5px;
+    width      : 100%;
+    max-width  : 90vw;
+    background : var(--je-white);
+    border     : 1.5px solid var(--je-border);
+    border-radius: var(--je-radius);
+    box-shadow : var(--je-shadow-lg);
+    z-index    : 9999;
+    overflow   : hidden;
+}
+
+.je-country-dropdown__list {
+    max-height : 280px;
+    overflow-y : auto;
+    overscroll-behavior: contain;
+    padding    : 6px;
+}
+
+.je-country-dropdown__list::-webkit-scrollbar { width: 5px; }
+.je-country-dropdown__list::-webkit-scrollbar-track { background: transparent; }
+.je-country-dropdown__list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+.je-country-dropdown__empty {
+    padding  : 20px;
+    text-align: center;
+    color    : var(--je-muted);
+    font-size: .85rem;
+}
+
+.je-country-option {
+    display    : inline-flex !important;
+    align-items: center;
+    gap        : 0px;
+    width      : 100%;
+    padding    : 9px 12px;
+    border     : none;
+    background : transparent;
+    border-radius: var(--je-radius-sm);
+    font-family: var(--je-font-body);
+    font-size  : .88rem;
+    font-weight: 500;
+    color      : var(--je-text);
+    cursor     : pointer;
+    text-align : left;
+    transition : background var(--je-transition);
+}
+
+.je-country-option:hover,
+.je-country-option--active {
+    background : #f0f5ff;
+    color      : var(--je-accent);
+}
+
+.je-country-option__name { flex: 1; }
+
+/* ── Flags ───────────────────────────────────────────────── */
+.je-flag {
+    width      : 20px !important;
+    height     : 20px !important;
+    object-fit : cover;
+    border-radius: 50% !important;
+    border     : 1px solid rgba(0,0,0,.08);
+    flex-shrink: 0;
+    margin-right: 15px;
+}
+
+.je-flag--sm {
+    width  : 16px;
+    height : 12px;
+}
+
+.je-flag-emoji {
+    font-size  : 1.15rem;
+    line-height: 1;
+}
+
+/* ── Results area ────────────────────────────────────────── */
+.je-search__results-wrap {
+    margin-top: 32px;
+}
+
+.je-search__results-meta {
+    font-size  : .82rem;
+    color      : var(--je-muted);
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+
+.je-results-count {
+    background  : #f1f5f9;
+    border-radius: var(--je-radius-pill);
+    padding     : 3px 12px;
+    font-weight : 600;
+    color       : var(--je-text);
+}
+
+/* ── Results grid ────────────────────────────────────────── */
+.je-search__results-grid {
+    display    : grid;
+    grid-template-columns: repeat( auto-fill, minmax( 280px, 1fr ) );
+    gap        : 20px;
+}
+
+/* ── Result card ─────────────────────────────────────────── */
+.je-result-card {
+    background    : var(--je-white);
+    border        : 1.5px solid var(--je-border);
+    border-radius : var(--je-radius);
+    overflow      : hidden;
+    box-shadow    : var(--je-shadow-sm);
+    transition    : transform var(--je-transition), box-shadow var(--je-transition), border-color var(--je-transition);
+    animation     : je-card-in .35s ease both;
+    display       : flex;
+    flex-direction: column;
+}
+
+.je-result-card:hover {
+    transform   : translateY(-3px);
+    box-shadow  : var(--je-shadow-md);
+    border-color: #bfdbfe;
+}
+
+@keyframes je-card-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.je-card__thumb-link {
+    display : block;
+    overflow: hidden;
+    height  : 180px;
+    background: var(--je-sand);
+}
+
+.je-card__thumb {
+    width     : 100%;
+    height    : 100%;
+    object-fit: cover;
+    transition: transform .4s ease;
+}
+
+.je-result-card:hover .je-card__thumb {
+    transform: scale(1.04);
+}
+
+.je-card__thumb--placeholder {
+    display        : flex;
+    align-items    : center;
+    justify-content: center;
+    color          : #94a3b8;
+}
+
+.je-card__body {
+    display       : flex;
+    flex-direction: column;
+    flex          : 1;
+    padding       : 16px 18px 18px;
+}
+
+.je-card__tags {
+    display    : flex;
+    flex-wrap  : wrap;
+    gap        : 5px;
+    margin-bottom: 8px;
+}
+
+.je-card__country {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 5px;
+    font-size  : .72rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color      : var(--je-accent);
+    background : #eff6ff;
+    border     : 1px solid #bfdbfe;
+    border-radius: var(--je-radius-pill);
+    padding    : 2px 9px 2px 6px;
+}
+
+.je-card__title {
+    font-family  : var(--je-font-display);
+    font-size    : 1.05rem;
+    font-weight  : 600;
+    line-height  : 1.3;
+    margin       : 0 0 8px;
+    color        : var(--je-navy);
+}
+
+.je-card__title a {
+    color          : inherit;
+    text-decoration: none;
+    transition     : color var(--je-transition);
+}
+
+.je-card__title a:hover { color: var(--je-accent); }
+
+.je-card__excerpt {
+    font-size  : .84rem;
+    color      : var(--je-muted);
+    line-height: 1.55;
+    margin     : 0 0 12px;
+    flex       : 1;
+    display    : -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow   : hidden;
+}
+
+.je-card__footer {
+    display    : flex;
+    align-items: center;
+    flex-wrap  : wrap;
+    gap        : 8px;
+    margin-top : auto;
+    padding-top: 10px;
+    border-top : 1px solid #f1f5f9;
+}
+
+.je-card__meta {
+    display  : flex;
+    flex-wrap: wrap;
+    gap      : 8px;
+    flex     : 1;
+}
+
+.je-card__meta-item {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 4px;
+    font-size  : .78rem;
+    color      : var(--je-muted);
+    font-weight: 500;
+}
+
+.je-card__meta-item--price {
+    color      : var(--je-coral);
+    font-weight: 700;
+}
+
+/* Stars */
+.je-card__stars {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 1px;
+}
+
+.je-star { font-size: .85rem; }
+.je-star--full  { color: #fbbf24; }
+.je-star--half  { color: #fbbf24; opacity: .6; }
+.je-star--empty { color: #e2e8f0; }
+.je-star__num   { font-size: .75rem; color: var(--je-muted); margin-left: 3px; }
+
+.je-card__cta {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 4px;
+    font-size  : .8rem;
+    font-weight: 700;
+    color      : var(--je-accent);
+    text-decoration: none;
+    margin-left: auto;
+    transition : gap var(--je-transition), color var(--je-transition);
+}
+
+.je-card__cta:hover { color: var(--je-accent-h); gap: 7px; }
+
+/* ── Spinner ─────────────────────────────────────────────── */
+.je-search__spinner {
+    display        : flex;
+    justify-content: center;
+    padding        : 40px 0 20px;
+}
+
+.je-spinner-ring {
+    display      : inline-block;
+    width        : 36px;
+    height       : 36px;
+    border       : 3px solid #e2e8f0;
+    border-top-color: var(--je-accent);
+    border-radius: 50%;
+    animation    : je-spin .7s linear infinite;
+}
+
+@keyframes je-spin { to { transform: rotate(360deg); } }
+
+/* ── No results ──────────────────────────────────────────── */
+.je-search__no-results {
+    text-align : center;
+    padding    : 48px 24px;
+    color      : var(--je-muted);
+}
+
+.je-search__no-results svg {
+    display    : block;
+    margin     : 0 auto 14px;
+    opacity    : .35;
+}
+
+.je-search__no-results p {
+    font-size  : .95rem;
+    font-weight: 500;
+}
+
+/* ── Load more ───────────────────────────────────────────── */
+.je-search__load-more-wrap {
+    text-align : center;
+    margin-top : 28px;
+}
+
+.je-search__load-more {
+    display    : inline-flex;
+    align-items: center;
+    gap        : 6px;
+    padding    : 12px 32px;
+    background : transparent;
+    border     : 2px solid var(--je-accent);
+    border-radius: var(--je-radius-pill);
+    color      : var(--je-accent);
+    font-family: var(--je-font-body);
+    font-size  : .9rem;
+    font-weight: 700;
+    cursor     : pointer;
+    transition : all var(--je-transition);
+    letter-spacing: .02em;
+}
+
+.je-search__load-more:hover {
+    background : var(--je-accent);
+    color      : var(--je-white);
+    box-shadow : 0 4px 16px rgba(26,86,219,.3);
+    transform  : translateY(-1px);
+}
+
+.je-search__load-more:disabled {
+    opacity: .5;
+    cursor : not-allowed;
+}
+
+/* ── Flatpickr overrides ─────────────────────────────────── */
+.flatpickr-calendar {
+   
+    box-shadow    : var(--je-shadow-lg) !important;
+    background-color: #DBD1C9 !important;
+    border-radius: 14px !important;
+    font-family   : var(--je-font-body) !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background    : var(--je-accent) !important;
+    border-color  : var(--je-accent) !important;
+}
+
+.flatpickr-day.inRange {
+    background    : #eff6ff !important;
+    border-color  : transparent !important;
+    box-shadow    : -5px 0 0 #eff6ff, 5px 0 0 #eff6ff !important;
+}
+
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover {
+    background: var(--je-accent-h) !important;
+    border-color: var(--je-accent-h) !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media ( max-width: 680px ) {
+    .je-search__row {
+        flex-direction: column;
+        border-radius : var(--je-radius);
+    }
+
+    .je-search__field {
+        border-right  : none;
+        border-bottom : 1.5px solid var(--je-border);
+    }
+
+    .je-search__field--date {
+        border-bottom: none;
+    }
+
+    .je-search__btn {
+        border-radius : 0 0 calc(var(--je-radius) - 2px) calc(var(--je-radius) - 2px);
+        justify-content: center;
+        padding       : 16px;
+        font-size     : 1rem;
+    }
+
+    .je-search__results-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .je-country-dropdown {
+        width: calc(100vw - 32px);
+        left : 0;
+    }
+}
+
+/* =============================================================
+   Dual calendars + quick period pills
+   ============================================================= */
+
+/* ── Period pills row ─────────────────────────────────────── */
+.je-date-periods {
+    
+    
+    display     : flex;
+    flex-wrap   : wrap;
+    align-items : center;
+    gap         : 8px;
+    margin: 20px 0 20px 0;
+    align-content: center;
+    justify-content: center;
+}
+
+
+.je-period-pill:hover {
+    border-color : var(--je-accent);
+    color        : var(--je-accent);
+    background   : #f0f5ff;
+}
+
+.je-period-pill.is-active {
+    background   : var(--je-navy);
+    border-color : var(--je-navy);
+    color        : var(--je-white);
+    box-shadow   : 0 3px 12px rgba(15,27,61,.25);
+}
+
+/* "Clear dates" pill — destructive tint */
+.je-period-pill--clear {
+    border-color : #fecaca;
+    color        : #dc2626;
+    background   : #fff5f5;
+}
+
+.je-period-pill--clear:hover {
+    background   : #dc2626;
+    border-color : #dc2626;
+    color        : var(--je-white);
+}
+
+/* (dual-field rules removed – single range input used) */
+
+/* Active highlight when a calendar is open */
+.je-search__field--date:focus-within {
+    background   : #f8fbff;
+}
+
+.je-search__field--date:focus-within .je-search__field-label {
+    color : var(--je-accent);
+}
+
+.je-search__field--date:focus-within .je-search__field-label svg {
+    opacity: 1;
+}
+
+/* ── Two-month calendar width ─────────────────────────────── */
+/* Make the inline alt-input feel like our own style */
+.je-search__field--date .flatpickr-input.flatpickr-input.form-control {
+    display: none; /* hide the hidden real input */
+}
+
+/* Selected range highlight colour matches accent */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange {
+    background   : var(--je-accent) !important;
+    border-color : var(--je-accent) !important;
+    color        : #fff !important;
+}
+
+.flatpickr-day.inRange {
+    background : #dbeafe !important;
+    border-color: transparent !important;
+    box-shadow : -5px 0 0 #dbeafe, 5px 0 0 #dbeafe !important;
+    color      : var(--je-navy) !important;
+}
+
+.flatpickr-day.today:not(.selected) {
+    border-color: var(--je-coral) !important;
+    font-weight : 700;
+}
+
+.flatpickr-day:hover:not(.flatpickr-disabled):not(.selected):not(.inRange) {
+    background : #f0f5ff !important;
+    border-color: var(--je-accent) !important;
+    color      : var(--je-accent) !important;
+}
+
+.flatpickr-months .flatpickr-month,
+.flatpickr-weekdays,
+span.flatpickr-weekday {
+    background : var(--je-navy) !important;
+    color      : #fff !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year {
+    color: #fff !important;
+}
+
+.flatpickr-prev-month svg,
+.flatpickr-next-month svg {
+    fill: #fff !important;
+}
+
+.flatpickr-prev-month:hover svg,
+.flatpickr-next-month:hover svg {
+    fill: var(--je-coral) !important;
+}
+
+/* Flatpickr renders both months in one container – ensure it doesn't get clipped */
+.flatpickr-calendar.hasTime.noCalendar,
+.flatpickr-calendar {
+    width: auto !important;
+}
+/* ── Responsive adjustments ───────────────────────────────── */
+@media ( max-width: 680px ) {
+    .je-search__field--checkin,
+    .je-search__field--checkout {
+        border-right  : none;
+        border-bottom : 1.5px solid var(--je-border);
+    }
+
+    .je-search__field--checkin::after { display: none; }
+
+    .je-date-periods { gap: 6px; }
+    .je-period-pill  { font-size: .73rem; padding: 5px 11px; }
+}
+
+/* On small screens collapse to single month */
+@media ( max-width: 600px ) {
+    .flatpickr-calendar .flatpickr-months {
+        flex-wrap: wrap;
+    }
+}
