@@ -1,0 +1,584 @@
+/**
+ * JetEngine AJAX Experience Search – Frontend JS
+ * Multi-country select, no jQuery.
+ */
+( function () {
+    'use strict';
+
+    const $ = ( sel, ctx ) => ( ctx || document ).querySelector( sel );
+    const $$ = ( sel, ctx ) => Array.from( ( ctx || document ).querySelectorAll( sel ) );
+
+    /* ── State ────────────────────────────────────────── */
+    const state = {
+        countries  : [],   // [{ term_id, name, flag }]
+        date_from  : '',
+        date_to    : '',
+        keyword    : '',
+        page       : 1,
+        total      : 0,
+        total_pages: 0,
+        loading    : false,
+    };
+
+    let wrap, tokenContainer, countryInput, countryDropdown,
+        countryList, countryEmpty, countryClear,
+        fpRange,
+        dateRangeInput, dateClear, periodClear,
+        searchBtn, resultsGrid, resultsMeta, spinner,
+        noResults, loadMoreWrap, loadMoreBtn;
+
+    let allCountries = [];
+    let skipCloseOnce  = false; // prevents dropdown closing after an option mousedown
+
+    /* ── Init ─────────────────────────────────────────── */
+    function init() {
+        wrap = $( '#je-search-wrap' );
+        if ( ! wrap ) return;
+
+        const dataEl = $( '#je-countries-data' );
+        if ( dataEl ) {
+            try { allCountries = JSON.parse( dataEl.textContent ); } catch(e) {}
+        }
+
+        tokenContainer  = $( '#je-country-tokens' );
+        countryInput    = $( '#je-country-input' );
+        countryDropdown = $( '#je-country-dropdown' );
+        countryList     = $( '#je-country-list' );
+        countryEmpty    = $( '#je-country-empty' );
+        countryClear    = $( '#je-country-clear' );
+        dateRangeInput  = $( '#je-date-range' );
+        dateClear       = $( '#je-date-clear' );
+        periodClear     = $( '#je-period-clear' );
+        searchBtn       = $( '#je-search-btn' );
+        resultsGrid     = $( '#je-results-grid' );
+        resultsMeta     = $( '#je-results-meta' );
+        spinner         = $( '#je-spinner' );
+        noResults       = $( '#je-no-results' );
+        loadMoreWrap    = $( '#je-load-more-wrap' );
+        loadMoreBtn     = $( '#je-load-more' );
+
+        initCountryField();
+        initDateRange();
+        initPeriodPills();
+        initQuickPills();
+        initLoadMore();
+    }
+
+    /* =========================================================
+       COUNTRY FIELD – multi-select
+       ========================================================= */
+    function initCountryField() {
+        countryInput.addEventListener( 'input',   onCountryInput );
+        countryInput.addEventListener( 'focus',   onCountryFocus );
+        countryInput.addEventListener( 'keydown', onCountryKeydown );
+        countryClear.addEventListener( 'click',   clearAllCountries );
+        tokenContainer.addEventListener( 'click', () => countryInput.focus() );
+
+        document.addEventListener( 'click', ( e ) => {
+            if ( skipCloseOnce ) { skipCloseOnce = false; return; }
+            if ( ! wrap.contains( e.target ) ) closeDropdown();
+        } );
+    }
+
+    function onCountryFocus() {
+        renderDropdown( countryInput.value.trim() );
+        openDropdown();
+    }
+
+    function onCountryInput() {
+        renderDropdown( countryInput.value.trim() );
+        openDropdown();
+    }
+
+    function onCountryKeydown( e ) {
+        // Backspace with empty input → remove last token
+        if ( e.key === 'Backspace' && countryInput.value === '' && state.countries.length > 0 ) {
+            const last = state.countries[ state.countries.length - 1 ];
+            removeCountry( last.term_id );
+            return;
+        }
+
+        const items = $$( '.je-country-option:not(.je-country-option--selected)', countryDropdown );
+        const active = $( '.je-country-option--active', countryDropdown );
+        let idx = items.indexOf( active );
+
+        if ( e.key === 'ArrowDown' ) {
+            e.preventDefault();
+            idx = ( idx + 1 ) % items.length;
+            setActiveItem( items, idx );
+        } else if ( e.key === 'ArrowUp' ) {
+            e.preventDefault();
+            idx = ( idx - 1 + items.length ) % items.length;
+            setActiveItem( items, idx );
+        } else if ( e.key === 'Enter' ) {
+            e.preventDefault();
+            if ( active ) active.click();
+        } else if ( e.key === 'Escape' ) {
+            closeDropdown();
+            countryInput.blur();
+        }
+    }
+
+    function setActiveItem( items, idx ) {
+        $$( '.je-country-option--active', countryDropdown ).forEach( el =>
+            el.classList.remove( 'je-country-option--active' )
+        );
+        if ( items[ idx ] ) {
+            items[ idx ].classList.add( 'je-country-option--active' );
+            items[ idx ].scrollIntoView( { block: 'nearest' } );
+        }
+    }
+
+    function renderDropdown( query ) {
+        const q        = query.toLowerCase();
+        const selected = new Set( state.countries.map( c => c.term_id ) );
+
+        const filtered = q
+            ? allCountries.filter( c => c.name.toLowerCase().includes( q ) )
+            : allCountries;
+
+        countryList.innerHTML = '';
+
+        if ( filtered.length === 0 ) {
+            countryEmpty.hidden = false;
+            return;
+        }
+
+        countryEmpty.hidden = true;
+
+        // Selected items float to top
+        const sorted = [
+            ...filtered.filter( c =>  selected.has( c.term_id ) ),
+            ...filtered.filter( c => !selected.has( c.term_id ) ),
+        ];
+
+        sorted.slice( 0, 100 ).forEach( c => {
+            const isSel = selected.has( c.term_id );
+            const item  = document.createElement( 'button' );
+            item.type   = 'button';
+            item.className = 'je-country-option' + ( isSel ? ' je-country-option--selected' : '' );
+            item.setAttribute( 'role', 'option' );
+            item.setAttribute( 'aria-selected', isSel ? 'true' : 'false' );
+            item.dataset.termId = c.term_id;
+
+            item.innerHTML =
+                buildFlagHtml( c.flag, '' ) +
+                '<span class="je-country-option__name">' + escHtml( c.name ) + '</span>' +
+                ( isSel
+                    ? '<span class="je-country-option__check" aria-hidden="true">'
+                        + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">'
+                        + '<polyline points="20 6 9 17 4 12"/></svg></span>'
+                    : '' );
+
+            item.addEventListener( 'mousedown', ( e ) => {
+                e.preventDefault();
+                skipCloseOnce = true; // the detached node click will fire next – ignore it
+                if ( isSel ) removeCountry( c.term_id );
+                else         addCountry( c );
+            } );
+
+            countryList.appendChild( item );
+        } );
+    }
+
+    function openDropdown() {
+        countryDropdown.hidden = false;
+        countryInput.setAttribute( 'aria-expanded', 'true' );
+    }
+
+    function closeDropdown() {
+        countryDropdown.hidden = true;
+        countryInput.setAttribute( 'aria-expanded', 'false' );
+    }
+
+    /* ── Add / Remove ────────────────────────────────── */
+    function addCountry( c ) {
+        if ( state.countries.find( x => x.term_id === c.term_id ) ) return;
+        state.countries.push( { term_id: c.term_id, name: c.name, flag: c.flag || '' } );
+        countryInput.value = '';
+        afterCountryChange();
+    }
+
+    function removeCountry( termId ) {
+        state.countries = state.countries.filter( c => c.term_id !== termId );
+        afterCountryChange();
+    }
+
+    function clearAllCountries() {
+        state.countries = [];
+        countryInput.value = '';
+        closeDropdown();
+        afterCountryChange();
+    }
+
+    function afterCountryChange() {
+        syncTokens();
+        syncClearBtn();
+        syncQuickPills();
+        renderDropdown( countryInput.value.trim() );
+        triggerSearch( true );
+    }
+
+    /* ── Tokens ──────────────────────────────────────── */
+    function syncTokens() {
+        tokenContainer.innerHTML = '';
+
+        state.countries.forEach( c => {
+            const token = document.createElement( 'span' );
+            token.className    = 'je-country-token';
+            token.dataset.termId = c.term_id;
+
+            token.innerHTML =
+                buildFlagHtml( c.flag, c.name ) +
+                '<span class="je-country-token__name">' + escHtml( c.name ) + '</span>' +
+                '<button type="button" class="je-token-remove" aria-label="Remove ' + escHtml( c.name ) + '">'
+                    + '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">'
+                    + '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+                + '</button>';
+
+            token.querySelector( '.je-token-remove' ).addEventListener( 'click', ( e ) => {
+                e.stopPropagation();
+                removeCountry( c.term_id );
+            } );
+
+            tokenContainer.appendChild( token );
+        } );
+
+        countryInput.placeholder = state.countries.length > 0
+            ? 'Add more…'
+            : 'Search destinations…';
+    }
+
+    function syncClearBtn() {
+        countryClear.hidden = state.countries.length === 0;
+    }
+
+    /* =========================================================
+       QUICK PILLS – multi-toggle
+       ========================================================= */
+    function initQuickPills() {
+        $$( '.je-search__quick-pill' ).forEach( pill => {
+            pill.addEventListener( 'click', () => {
+                const id   = parseInt( pill.dataset.termId, 10 );
+                const name = pill.dataset.termName;
+                const flag = pill.dataset.termFlag || '';
+
+                if ( state.countries.find( c => c.term_id === id ) ) {
+                    removeCountry( id );
+                } else {
+                    addCountry( { term_id: id, name, flag } );
+                }
+            } );
+        } );
+    }
+
+    function syncQuickPills() {
+        const selected = new Set( state.countries.map( c => c.term_id ) );
+        $$( '.je-search__quick-pill' ).forEach( pill => {
+            const id = parseInt( pill.dataset.termId, 10 );
+            pill.classList.toggle( 'is-active', selected.has( id ) );
+        } );
+    }
+
+    /* =========================================================
+       DATE RANGE – single input, two-month calendar popup
+       ========================================================= */
+    function initDateRange() {
+        if ( typeof flatpickr === 'undefined' ) return;
+
+        fpRange = flatpickr( dateRangeInput, {
+            mode         : 'range',
+            showMonths   : 2,
+            dateFormat   : 'Y-m-d',
+            altInput     : true,
+            altFormat    : 'M j, Y',
+            minDate      : 'today',
+            disableMobile: false,
+            onReady( _, __, fp ) {
+                if ( fp.altInput ) fp.altInput.setAttribute( 'readonly', '' );
+            },
+            onClose( selectedDates ) {
+                if ( selectedDates.length === 2 ) {
+                    state.date_from = formatDate( selectedDates[0] );
+                    state.date_to   = formatDate( selectedDates[1] );
+                    dateClear.hidden = false;
+                    clearActivePeriod();
+                    syncPeriodClearBtn();
+                    triggerSearch( true );
+                } else if ( selectedDates.length === 0 ) {
+                    clearDates( false );
+                }
+            },
+        } );
+
+        dateClear.addEventListener( 'click', () => clearDates( true ) );
+        periodClear.addEventListener( 'click', () => clearDates( true ) );
+    }
+
+    /* ── Quick period pills ──────────────────────────── */
+    function initPeriodPills() {
+        $$( '.je-period-pill[data-period]' ).forEach( pill => {
+            pill.addEventListener( 'click', () => {
+                const period = pill.dataset.period;
+                const range  = calcPeriod( period );
+                if ( ! range ) return;
+
+                applyDateRange( range.from, range.to );
+
+                $$( '.je-period-pill' ).forEach( p => p.classList.remove( 'is-active' ) );
+                pill.classList.add( 'is-active' );
+                syncPeriodClearBtn();
+                triggerSearch( true );
+            } );
+        } );
+    }
+
+    function calcPeriod( period ) {
+        const today = new Date();
+        today.setHours( 0, 0, 0, 0 );
+
+        let from, to;
+
+        if ( period === 'weekend' ) {
+            // Nearest upcoming Saturday → Sunday
+            const day = today.getDay(); // 0=Sun … 6=Sat
+            const daysToSat = ( 6 - day + 7 ) % 7 || 7; // if today IS Sat, jump to next
+            from = addDays( today, daysToSat );
+            to   = addDays( from,  1 );
+
+        } else if ( period === 'next7' ) {
+            from = addDays( today, 1 );
+            to   = addDays( today, 7 );
+
+        } else if ( period === 'next14' ) {
+            from = addDays( today, 1 );
+            to   = addDays( today, 14 );
+
+        } else if ( period === 'nextmonth' ) {
+            from = addDays( today, 1 );
+            to   = new Date( today.getFullYear(), today.getMonth() + 2, 0 ); // last day of next month
+
+        } else if ( period === 'next3m' ) {
+            from = addDays( today, 1 );
+            to   = new Date( today.getFullYear(), today.getMonth() + 4, 0 );
+        }
+
+        return from && to ? { from, to } : null;
+    }
+
+    function addDays( base, n ) {
+        const d = new Date( base );
+        d.setDate( d.getDate() + n );
+        return d;
+    }
+
+    function applyDateRange( from, to ) {
+        fpRange.setDate( [ from, to ], true );
+        state.date_from  = formatDate( from );
+        state.date_to    = formatDate( to );
+        dateClear.hidden = false;
+    }
+
+    function clearActivePeriod() {
+        $$( '.je-period-pill.is-active' ).forEach( p => p.classList.remove( 'is-active' ) );
+    }
+
+    function syncPeriodClearBtn() {
+        periodClear.hidden = ! ( state.date_from || state.date_to );
+    }
+
+    function clearDates( triggerNew ) {
+        if ( fpRange ) fpRange.clear();
+        state.date_from  = '';
+        state.date_to    = '';
+        dateClear.hidden = true;
+        clearActivePeriod();
+        syncPeriodClearBtn();
+        if ( triggerNew ) triggerSearch( true );
+    }
+
+    function formatDate( d ) {
+        const mm = String( d.getMonth() + 1 ).padStart( 2, '0' );
+        const dd = String( d.getDate() ).padStart( 2, '0' );
+        return `${ d.getFullYear() }-${ mm }-${ dd }`;
+    }
+
+    /* =========================================================
+       SEARCH
+       ========================================================= */
+    function triggerSearch( reset ) {
+        if ( reset ) state.page = 1;
+        runSearch( reset );
+    }
+
+    function runSearch( reset ) {
+        if ( state.loading ) return;
+        state.loading = true;
+        setLoading( true );
+
+        const body = new FormData();
+        body.append( 'action',      'je_search_experiences' );
+        body.append( 'nonce',       jeSearch.nonce );
+        body.append( 'date_from',   state.date_from );
+        body.append( 'date_to',     state.date_to );
+        body.append( 'keyword',     state.keyword );
+        body.append( 'page',        state.page );
+        body.append( 'country_ids', JSON.stringify( state.countries.map( c => c.term_id ) ) );
+
+        fetch( jeSearch.ajaxUrl, { method: 'POST', body } )
+            .then( r => r.json() )
+            .then( data => {
+                state.loading = false;
+                setLoading( false );
+                if ( data.success ) {
+                    handleResults( data.data, reset );
+                } else {
+                    showNoResults();
+                }
+            } )
+            .catch( () => {
+                state.loading = false;
+                setLoading( false );
+                showNoResults();
+            } );
+    }
+
+    function handleResults( data, reset ) {
+        state.total       = data.total;
+        state.total_pages = data.total_pages;
+        state.page        = data.page;
+
+        if ( reset ) resultsGrid.innerHTML = '';
+
+        if ( data.total === 0 ) {
+            showNoResults();
+            resultsMeta.hidden  = true;
+            loadMoreWrap.hidden = true;
+            return;
+        }
+
+        noResults.hidden   = true;
+        resultsMeta.hidden = false;
+        resultsMeta.innerHTML =
+            '<span class="je-results-count">' +
+            escHtml( data.total ) + ' ' + jeSearch.i18n.results + '</span>';
+
+        data.posts.forEach( ( post, i ) => {
+            const card = buildCard( post );
+            card.style.animationDelay = ( i * 60 ) + 'ms';
+            resultsGrid.appendChild( card );
+        } );
+
+        const loaded = $$( '.je-result-card', resultsGrid ).length;
+        loadMoreWrap.hidden = ( loaded >= data.total );
+    }
+
+    function showNoResults() {
+        noResults.hidden    = false;
+        loadMoreWrap.hidden = true;
+        resultsMeta.hidden  = true;
+    }
+
+    /* =========================================================
+       CARD BUILDER
+       ========================================================= */
+    function buildCard( post ) {
+        const card = document.createElement( 'article' );
+        card.className = 'je-result-card';
+
+        const thumb = post.thumb
+            ? `<a href="${ escHtml( post.permalink ) }" class="je-card__thumb-link" tabindex="-1" aria-hidden="true">
+                   <img src="${ escHtml( post.thumb ) }" alt="" class="je-card__thumb" loading="lazy">
+               </a>`
+            : `<a href="${ escHtml( post.permalink ) }" class="je-card__thumb-link je-card__thumb--placeholder" tabindex="-1" aria-hidden="true">
+                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+               </a>`;
+
+        const countryBadges = post.countries.map( c =>
+            `<span class="je-card__country">` +
+            ( c.flag ? `<img src="${ escHtml( c.flag ) }" alt="" class="je-flag je-flag--sm">` : '' ) +
+            escHtml( c.name ) + `</span>`
+        ).join( '' );
+
+        const stars = post.rating ? buildStars( post.rating ) : '';
+
+        const meta = [
+            post.duration ? `<span class="je-card__meta-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ escHtml( post.duration ) }</span>` : '',
+            post.price    ? `<span class="je-card__meta-item je-card__meta-item--price"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${ escHtml( post.price ) }</span>` : '',
+        ].filter( Boolean ).join( '' );
+
+        card.innerHTML = `
+            ${ thumb }
+            <div class="je-card__body">
+                <div class="je-card__tags">${ countryBadges }</div>
+                <h3 class="je-card__title">
+                    <a href="${ escHtml( post.permalink ) }">${ escHtml( post.title ) }</a>
+                </h3>
+                ${ post.excerpt ? `<p class="je-card__excerpt">${ escHtml( post.excerpt ) }</p>` : '' }
+                <div class="je-card__footer">
+                    <div class="je-card__meta">${ meta }</div>
+                    ${ stars }
+                    <a href="${ escHtml( post.permalink ) }" class="je-card__cta" aria-label="View ${ escHtml( post.title ) }">
+                        View
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </a>
+                </div>
+            </div>`;
+
+        return card;
+    }
+
+    function buildStars( rating ) {
+        const full = Math.floor( rating );
+        const half = rating % 1 >= 0.5;
+        let html = '<div class="je-card__stars" aria-label="Rating: ' + rating + ' out of 5">';
+        for ( let i = 1; i <= 5; i++ ) {
+            if ( i <= full )                   html += '<span class="je-star je-star--full">★</span>';
+            else if ( i === full + 1 && half ) html += '<span class="je-star je-star--half">★</span>';
+            else                               html += '<span class="je-star je-star--empty">★</span>';
+        }
+        html += '<span class="je-star__num">' + rating + '</span></div>';
+        return html;
+    }
+
+    /* =========================================================
+       LOAD MORE
+       ========================================================= */
+    function initLoadMore() {
+        loadMoreBtn.addEventListener( 'click', () => {
+            state.page++;
+            runSearch( false );
+        } );
+    }
+
+    /* =========================================================
+       UTILS
+       ========================================================= */
+    function setLoading( on ) {
+        spinner.hidden       = ! on;
+        searchBtn.disabled   = on;
+        loadMoreBtn.disabled = on;
+    }
+
+    function buildFlagHtml( flag, alt ) {
+        return flag
+            ? `<img src="${ escHtml( flag ) }" alt="${ escHtml( alt ) }" class="je-flag" aria-hidden="true">`
+            : '';
+    }
+
+    function escHtml( str ) {
+        return String( str )
+            .replace( /&/g, '&amp;' )
+            .replace( /</g, '&lt;' )
+            .replace( />/g, '&gt;' )
+            .replace( /"/g, '&quot;' )
+            .replace( /'/g, '&#39;' );
+    }
+
+    if ( document.readyState === 'loading' ) {
+        document.addEventListener( 'DOMContentLoaded', init );
+    } else {
+        init();
+    }
+
+} )();
