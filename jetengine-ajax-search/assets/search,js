@@ -479,7 +479,7 @@
         resultsMeta.hidden  = true;
     }
 
-    /* =========================================================
+      /* =========================================================
        CARD BUILDER
        ========================================================= */
     function buildCard( post ) {
@@ -507,6 +507,33 @@
             post.price    ? `<span class="je-card__meta-item je-card__meta-item--price"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${ escHtml( post.price ) }</span>` : '',
         ].filter( Boolean ).join( '' );
 
+        // ── Starting-at price ──
+        const startingPriceHtml = post.starting_price
+            ? `<div class="je-card__starting-price">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Starting at <strong>${ escHtml( post.starting_price ) }</strong>
+               </div>`
+            : '';
+
+        // ── Upcoming dates from repeater ──
+        let upcomingDatesHtml = '';
+        if ( post.upcoming_dates && post.upcoming_dates.length > 0 ) {
+            const rows = post.upcoming_dates.map( d => {
+                const dateRange = d.date_from && d.date_to
+                    ? escHtml( d.date_from ) + ' – ' + escHtml( d.date_to )
+                    : escHtml( d.date_from || d.date_to );
+                const rowPrice = d.price
+                    ? `<span class="je-card__date-price">${ escHtml( d.price ) }</span>`
+                    : '';
+                return `<div class="je-card__date-row">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span class="je-card__date-range">${ dateRange }</span>
+                            ${ rowPrice }
+                        </div>`;
+            } ).join( '' );
+            upcomingDatesHtml = `<div class="je-card__dates">${ rows }</div>`;
+        }
+
         card.innerHTML = `
             ${ thumb }
             <div class="je-card__body">
@@ -515,6 +542,8 @@
                     <a href="${ escHtml( post.permalink ) }">${ escHtml( post.title ) }</a>
                 </h3>
                 ${ post.excerpt ? `<p class="je-card__excerpt">${ escHtml( post.excerpt ) }</p>` : '' }
+                ${ startingPriceHtml }
+                ${ upcomingDatesHtml }
                 <div class="je-card__footer">
                     <div class="je-card__meta">${ meta }</div>
                     ${ stars }
@@ -540,6 +569,7 @@
         html += '<span class="je-star__num">' + rating + '</span></div>';
         return html;
     }
+
 
     /* =========================================================
        LOAD MORE
